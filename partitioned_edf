@@ -1,0 +1,13 @@
+#!/usr/bin/env python3.9
+
+import sys
+from Parser import *
+from Partitioner import *
+
+if __name__ == '__main__':
+    p = Parser()
+    p.parse(sys.argv[1:])
+    heuristic, sort, limit, cores = p.get_options()
+    tasks = p.get_tasks()
+    partitioner = Partitioner(tasks, cores)
+    partitioner.run(sort, heuristic, limit)
