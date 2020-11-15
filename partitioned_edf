@@ -5,9 +5,16 @@ from Parser import *
 from Partitioner import *
 
 if __name__ == '__main__':
-    p = Parser()
-    p.parse(sys.argv[1:])
-    heuristic, sort, limit, cores = p.get_options()
-    tasks = p.get_tasks()
-    partitioner = Partitioner(tasks, cores)
-    partitioner.run(sort, heuristic, limit)
+    parser = Parser()
+    parser.parse(sys.argv[1:])
+    heuristic, sort, limit, cores_number = parser.get_options()
+    tasks = parser.get_tasks()
+    partitioner = Partitioner(tasks, heuristic, sort, limit, cores_number)
+    partitioner.run()
+
+    if partitioner.is_partitioned():
+        for core in partitioner.get_cores():
+            print(core)
+            core.schedule(limit)
+    else:
+        print("Cannot be partitioned")

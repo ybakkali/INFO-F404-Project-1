@@ -5,21 +5,19 @@ from operator import attrgetter
 class EDFScheduler:
     def __init__(self, tasks):
         """
+        A scheduler class that can schedules the jobs of core with the EDF (earliest deadline first) strategy
 
-        :param tasks:
+        :param tasks: the list of the tasks
         """
         self.tasks = tasks
-        self.O_max = 0
-        self.P = None
-
-        self.get_o_max()
-        self.get_p()
+        self.timeline = []
 
     def sort_all_jobs(self, limit):
         """
+        Sorting the core's jobs in an increasing way using the (deadline, offset) key
 
-        :param limit:
-        :return:
+        :param limit: the time step limit for the simulator
+        :return: an ordered list of all the core's jobs
         """
         jobs = []
         for task in self.tasks:
@@ -29,66 +27,45 @@ class EDFScheduler:
 
     def get_o_max(self):
         """
+        Get the maximum tasks set offset value
 
+        :return: the maximum offset
         """
+        o_max = 0
         for task in self.tasks:
-            if self.O_max < task.get_offset():
-                self.O_max = task.get_offset()
+            if o_max < task.get_offset():
+                o_max = task.get_offset()
+        return o_max
 
     def get_p(self):
         """
+        Get the hyper-period of the tasks set
 
+        :return: the hyper-period
         """
         period_list = []
         for task in self.tasks:
             period_list.append(task.get_period())
-        self.P = lcm(*period_list)
-
-    def are_deadlines_valid(self):
-        """
-
-        :return:
-        """
-        for task in self.tasks:
-            for job in task.get_jobs():
-                if not job.is_deadline_met(): # job.get_deadline() not in range(0, self.O_max + 2 * self.P + 1)
-                    return False
-        return True
-
-    def configuration(self, t, task):
-        """
-
-        :param t:
-        :param task:
-        :return:
-        """
-        if t >= task.get_offset():
-            gamma = (t - task.get_offset()) % task.get_period()
-        else:
-            gamma = t - task.get_offset()
-
-        alpha = task.get_active_jobs()
-
-        beta = 0 if alpha == 0 else task.get_oldest_active_job().get_cumulative_time()
-
-        return gamma, alpha, beta
+        return lcm(*period_list)
 
     def get_configurations(self, t):
         """
+        Get the configuration of the tasks set at instant t
 
-        :param t:
-        :return:
+        :param t: instant t
+        :return: the list of configurations of the tasks set
         """
-        return [self.configuration(t, task) for task in self.tasks]
+        return [task.configuration(t) for task in self.tasks]
 
     def is_scheduling(self, limit):
         """
+        Try to schedule the jobs of a core
 
-        :param limit:
-        :return:
+        :param limit: the time step limit for the simulator
+        :return: True if the jobs of a core can be scheduled otherwise False
         """
-        t1 = self.O_max + self.P
-        t2 = self.O_max + self.P * 2
+        o_max, p = self.get_o_max(), self.get_p()
+        t1, t2 = o_max + p, o_max + p * 2
         jobs = self.sort_all_jobs(limit)
         for t in range(0, limit + 1):
             if t == t1:
@@ -98,39 +75,64 @@ class EDFScheduler:
                 if conf1 != conf2:
                     return False
 
-            is_selected = False
-            it = 0
+            is_selected, it = False, 0
             while not is_selected and jobs and it < len(jobs):
                 job = jobs[it]
                 if job.get_offset() <= t and job.get_offset() < limit and job.get_state() != "Done":
-                    job.decrease()
-                    job.handler(t)
+                    job.run()
+                    job.stop()
                     if job.get_state() == "Done":
                         jobs.pop(it)
+                        if not job.is_deadline_met(t):
+                            return False
                     is_selected = True
 
                 it += 1
-        return self.are_deadlines_valid()
+        return True
 
     def run(self, limit):
         """
+        Simulate the execution of the EDF scheduler on the core's tasks set
 
-        :param limit:
+        :param limit: the time step limit for the simulator
         """
         jobs = self.sort_all_jobs(limit)
+        self.timeline = {i: {"release": [], "deadline": [], "running": []} for i in range(limit + 1)}
+
         for t in range(0, limit + 1):
-            is_selected = False
-            it = 0
+            is_selected, it = False, 0
             while not is_selected and jobs and it < len(jobs):
                 job = jobs[it]
                 if job.get_offset() <= t and job.get_offset() < limit and job.get_state() != "Done":
-                    print("Time unit {} : ".format(t) + job.get_id())
-                    job.decrease()
-                    job.handler(t)
+                    self.timeline[t]["running"].append("> {} is running".format(job.get_id()))
+                    job.run()
+                    job.stop()
                     if job.get_state() == "Done":
                         jobs.pop(it)
                     is_selected = True
 
                 it += 1
-            if not is_selected:
-                print("Time unit {} : ".format(t))
+
+        self.print_timeline(limit)
+
+    def print_timeline(self, limit):
+        """
+        A textual overview of what happening during the simulation
+
+        :param limit: the time step limit for the simulator
+        """
+        jobs = self.sort_all_jobs(limit)
+
+        for job in jobs:
+
+            self.timeline[job.get_offset()]["release"].append(
+                "> {} released (deadline = {})".format(job.get_id(), job.get_deadline()))
+
+            if job.get_deadline() <= limit:
+                self.timeline[job.get_deadline()]["deadline"].append("> Deadline of {}".format(job.get_id()))
+
+        for t in range(0, limit + 1):
+            print("Instant {}:".format(t))
+            for event in self.timeline[t]:
+                for e in self.timeline[t][event]:
+                    print("\t" + e)

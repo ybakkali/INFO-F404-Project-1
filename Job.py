@@ -1,35 +1,37 @@
 class Job:
-    def __init__(self, task, k):
+    def __init__(self, task, id):
         """
+        The class of a periodic task job
 
-        :param task:
-        :param k:
+        :param task: the job proprietary task
+        :param id: the job identifier and it is unique
         """
         self.task = task
-        self.id = "T{}J{}".format(task.id, k)
-        self.offset = task.offset + (k - 1) * task.period
+        self.id = id
+        self.offset = task.offset + (id - 1) * task.period
         self.wcet = task.wcet
-        self.deadline = task.offset + (k - 1) * task.period + task.deadline
+        self.deadline = task.offset + (id - 1) * task.period + task.deadline
         self.state = "Undone"
         self.time_remaining = self.wcet
-        self.finished = -1
 
     def __str__(self):
         return self.id + "\noffset {}\nWCET {}\ndeadline {}".format(self.offset, self.wcet, self.deadline)
 
     def get_task(self):
         """
+        Get the job proprietary task
 
-        :return:
+        :return: the job proprietary task
         """
         return self.task
 
     def get_id(self):
         """
+        Get the job identifier
 
-        :return:
+        :return: job ID
         """
-        return self.id
+        return "T{}J{}".format(self.task.id, self.id)
 
     def get_offset(self):
         """
@@ -47,52 +49,60 @@ class Job:
         """
         return self.deadline
 
-    def get_state(self):
-        """
-
-        :return:
-        """
-        return self.state
-
     def get_cumulative_time(self):
         """
+        Get the cumulative CPU time used by the job
 
-        :return:
+        :return: the cumulative CPU time
         """
         return self.wcet - self.time_remaining
 
+    def get_state(self):
+        """
+        Get the execution state of the job
+
+        :return: job state
+        """
+        return self.state
+
     def set_state(self, state):
         """
+        Set the execution state of the job
 
-        :param state:
+        :param state: the current execution state of the job
         """
         self.state = state
 
-    def is_deadline_met(self):
+    def is_deadline_met(self, t):
         """
+        Get if the deadline is met
 
-        :return:
+        :return: True if the deadline is met otherwise False
         """
-        return self.finished + 1 <= self.deadline
+        return t + 1 <= self.deadline
 
     def decrease(self):
         """
-
+        Decrease the remaining CPU time to be used by the job
         """
         self.time_remaining -= 1
 
-    def handler(self, t):
+    def run(self):
         """
-
-        :param t:
+        Run the job execution
         """
+        self.decrease()
         self.task.set_oldest_active_job(self)
         if self.state == "Undone":
-            self.state = "Running"
             self.task.increase_active_jobs()
+            self.state = "Running"
+
+    def stop(self):
+        """
+        Stop the job execution
+        """
         if self.time_remaining == 0:
             self.set_state("Done")
-            self.finished = t
             self.task.decrease_active_jobs()
             if self.task.get_oldest_active_job().get_id() == self.id:
                 self.task.set_oldest_active_job(None)

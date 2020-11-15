@@ -22,6 +22,10 @@ class Task:
         self.oldest_active_job = None
         self.jobs = []
 
+    def __str__(self):
+        return "Task number {}\noffset {}\nWCET {}\ndeadline {}\nperiod {}".format(self.id, self.offset, self.wcet,
+                                                                                   self.deadline, self.period)
+
     def init_jobs(self, limit):
         """
         Initialise the set of jobs for the periodic task in the interval [0,limit]
@@ -33,10 +37,6 @@ class Task:
         while self.offset + (k - 1) * self.period <= limit:
             self.jobs.append(Job(self, k))
             k += 1
-
-    def __str__(self):
-        return "Task number {}\noffset {}\nWCET {}\ndeadline {}\nperiod {}".format(self.id, self.offset, self.wcet,
-                                                                                   self.deadline, self.period)
 
     def get_offset(self):
         """
@@ -115,9 +115,25 @@ class Task:
         """
         self.active_jobs -= 1
 
+    def configuration(self, t):
+        """
+        Define the configuration at instant t as follows:
+            - gamma: the time elapsed since the request of the task
+            - alpha: the number of active jobs
+            - beta: the cumulative CPU time used by the oldest active job of the task
+
+        :param t: instant t
+        :return: a tuple of (gamma, alpha, beta)
+        """
+        gamma = (t - self.offset) % self.period if t >= self.offset else t - self.offset
+        alpha = self.active_jobs
+        beta = 0 if alpha == 0 else self.oldest_active_job.get_cumulative_time()
+
+        return gamma, alpha, beta
+
     def reset(self):
         """
-
+        Reset some fields of the task
         """
         self.active_jobs = 0
         self.oldest_active_job = None
