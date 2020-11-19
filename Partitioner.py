@@ -22,7 +22,6 @@ class Partitioner:
         self.heuristic = heuristic
         self.sort = sort
         self.limit = limit
-        self.cores_number = cores_number
         self.tasks = tasks
         self.cores = [Core(i + 1) for i in range(cores_number)]
         self.last_core_used = 0
@@ -66,7 +65,7 @@ class Partitioner:
         :return: True if the task can be placed in one of the cores otherwise False
         """
         it = current
-        while it < self.cores_number:
+        while it < len(self.cores):
             self.last_core_used = it
             self.cores[it].add_task(task)
             res = self.cores[it].is_scheduling(self.limit)

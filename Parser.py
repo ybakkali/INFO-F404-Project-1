@@ -53,25 +53,28 @@ class Parser:
             except getopt.GetoptError as err:
                 print(err)
                 sys.exit(2)
-
+            mandatory_options = 0
             for opt, arg in opts:
                 if opt == '-h':
                     if arg not in ["ff", "wf", "bf", "nf"]:
                         print("The -h option can take only one of these values ff|wf|bf|nf")
                         sys.exit(2)
                     else:
+                        mandatory_options += 1
                         self.heuristic = arg
                 elif opt == '-s':
                     if arg not in ["du", "iu"]:
                         print("The -s option can take only one of these values du|iu")
                         sys.exit(2)
                     else:
+                        mandatory_options += 1
                         self.sort = arg
                 elif opt == '-l':
                     if not arg.isdigit():
                         print("The -l option can take only integer values")
                         sys.exit(2)
                     else:
+                        mandatory_options += 1
                         self.limit = int(arg)
                 elif opt == '-m':
                     if not arg.isdigit():
@@ -79,6 +82,9 @@ class Parser:
                         sys.exit(2)
                     else:
                         self.cores_number = int(arg)
+            if mandatory_options != 3:
+                print("Some mandatory options are missing")
+                sys.exit(2)
         else:
             print("The command line is incorrect")
             sys.exit(2)
